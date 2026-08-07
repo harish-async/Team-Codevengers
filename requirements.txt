@@ -9,4 +9,8 @@ xgboost
 joblib
 lightgbm
 fastapi[standard]
+<<<<<<< HEAD
 matplotlib
+=======
+matplotlib
+>>>>>>> 69810bb (feat: complete SuryaKavach Enterprise codebase (ML models, Next.js frontend, requirements & documentation))
