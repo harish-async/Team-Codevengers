@@ -1,0 +1,12 @@
+ipykernel
+cdflib
+xarray
+pandas
+numpy
+pyarrow
+scikit-learn
+xgboost
+joblib
+lightgbm
+fastapi[standard]
+matplotlib
