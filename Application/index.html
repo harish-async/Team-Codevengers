@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SuryaKavach AI | Space Weather Command Center</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f6ff',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            900: '#1e3a8a',
+                            glow: '#00f0ff'
+                        },
+                        space: {
+                            950: '#05070f',
+                            900: '#0b0f19',
+                            850: '#111827',
+                            800: '#1f293d',
+                            700: '#334155'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Lucide Icons & Chart.js CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body {
+            background-color: #05070f;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(37, 99, 235, 0.08) 0px, transparent 50%),
+                radial-gradient(at 100% 0%, rgba(139, 92, 246, 0.08) 0px, transparent 50%),
+                radial-gradient(at 50% 100%, rgba(14, 165, 233, 0.05) 0px, transparent 50%);
+            background-attachment: fixed;
+        }
+
+        .glass-card {
+            background: rgba(11, 15, 25, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+        }
+
+        .glass-card-hover {
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .glass-card-hover:hover {
+            border-color: rgba(59, 130, 246, 0.3);
+            box-shadow: 0 0 25px -5px rgba(59, 130, 246, 0.15);
+        }
+
+        .glow-quiet { box-shadow: 0 0 20px -3px rgba(34, 197, 94, 0.3); }
+        .glow-s1 { box-shadow: 0 0 20px -3px rgba(234, 179, 8, 0.3); }
+        .glow-s2 { box-shadow: 0 0 20px -3px rgba(249, 115, 22, 0.4); }
+        .glow-s3 { box-shadow: 0 0 25px -2px rgba(239, 68, 68, 0.5); }
+        .glow-s4 { box-shadow: 0 0 30px 0px rgba(168, 85, 247, 0.6); }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: rgba(11, 15, 25, 0.5); }
+        ::-webkit-scrollbar-thumb { background: #1f293d; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #334155; }
+    </style>
+</head>
+<body class="text-slate-200 antialiased min-h-screen flex flex-col font-sans">
+
+    <!-- TOP NAV BAR -->
+    <header class="border-b border-slate-800/80 glass-card sticky top-0 z-50">
+        <div class="max-w-[1700px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            
+            <!-- Brand / Logo -->
+            <div class="flex items-center space-x-3">
+                <div class="p-2 bg-gradient-to-tr from-blue-600 to-cyan-500 rounded-lg text-white shadow-lg shadow-blue-500/20">
+                    <i data-lucide="shield-alert" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <span class="font-bold text-lg tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-200 to-slate-400">SuryaKavach</span>
+                        <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 font-semibold tracking-wide">AI v2.4</span>
+                    </div>
+                    <p class="text-[11px] text-slate-400 font-mono tracking-wider">REAL-TIME SOLAR PROTON FLUX FORECASTER</p>
+                </div>
+            </div>
+
+            <!-- Controls & Stream Status -->
+            <div class="flex items-center space-x-4">
+                <!-- Status Pill -->
+                <div id="status-pill" class="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-xs font-mono">
+                    <span id="status-indicator" class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                    <span id="status-text" class="text-slate-300 font-medium">STANDBY</span>
+                </div>
+
+                <!-- Simulation Action Buttons -->
+                <div class="flex items-center space-x-2 bg-space-900 p-1 rounded-xl border border-slate-800">
+                    <button id="btn-start" onclick="startSim()" class="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-600 hover:bg-blue-500 text-white transition-all shadow-md shadow-blue-600/20 active:scale-95">
+                        <i data-lucide="play" class="w-3.5 h-3.5 fill-current"></i>
+                        <span>Start</span>
+                    </button>
+                    <button id="btn-stop" onclick="stopSim()" class="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all active:scale-95">
+                        <i data-lucide="pause" class="w-3.5 h-3.5"></i>
+                        <span>Pause</span>
+                    </button>
+                    <button id="btn-restart" onclick="restartSim()" class="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all active:scale-95">
+                        <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                        <span>Reset</span>
+                    </button>
+                </div>
+
+                <!-- Clock UTC -->
+                <div class="hidden md:flex flex-col text-right font-mono text-xs border-l border-slate-800 pl-4">
+                    <span id="utc-time" class="text-slate-200 font-semibold">--:--:-- UTC</span>
+                    <span id="utc-date" class="text-[10px] text-slate-500">YYYY-MM-DD</span>
+                </div>
+            </div>
+
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT DASHBOARD -->
+    <main class="flex-1 max-w-[1700px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+        
+        <!-- TELEMETRY HIGHLIGHT CARDS -->
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            
+            <!-- CARD 1: NOAA Threat Category -->
+            <div id="noaa-card" class="glass-card glass-card-hover rounded-xl p-4 flex flex-col justify-between border-l-4 border-l-emerald-500 relative overflow-hidden">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-mono text-slate-400 uppercase tracking-wider">NOAA Threat Level</span>
+                    <i data-lucide="activity" class="w-4 h-4 text-slate-500"></i>
+                </div>
+                <div class="my-3 flex items-baseline space-x-2">
+                    <span id="noaa-category" class="text-3xl font-extrabold font-mono text-emerald-400 tracking-tight">QUIET</span>
+                    <span id="noaa-subtext" class="text-xs text-slate-400 font-mono">Normal Background</span>
+                </div>
+                <div class="text-[11px] text-slate-500 flex justify-between font-mono">
+                    <span>Threshold: &lt;10 pfu</span>
+                    <span id="accuracy-status" class="text-emerald-400 font-medium">Model 100% Sync</span>
+                </div>
+            </div>
+
+            <!-- CARD 2: Predicted Flux -->
+            <div class="glass-card glass-card-hover rounded-xl p-4 flex flex-col justify-between">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-mono text-slate-400 uppercase tracking-wider">Predicted Flux (1h)</span>
+                    <i data-lucide="cpu" class="w-4 h-4 text-blue-400"></i>
+                </div>
+                <div class="my-2">
+                    <div class="flex items-baseline space-x-1">
+                        <span id="pred-pfu" class="text-3xl font-bold font-mono text-white tracking-tight">0.00</span>
+                        <span class="text-xs text-slate-400 font-mono">pfu</span>
+                    </div>
+                    <div class="text-xs text-slate-400 font-mono mt-0.5">
+                        Log Flux: <span id="pred-log" class="text-blue-400 font-semibold">0.0000</span>
+                    </div>
+                </div>
+                <div class="text-[11px] text-slate-500 font-mono flex justify-between">
+                    <span>Actual: <span id="actual-pfu" class="text-slate-300">0.00</span> pfu</span>
+                    <span>Err: <span id="error-pfu" class="text-slate-300">0.00</span></span>
+                </div>
+            </div>
+
+            <!-- CARD 3: Solar Wind Speed -->
+            <div class="glass-card glass-card-hover rounded-xl p-4 flex flex-col justify-between">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-mono text-slate-400 uppercase tracking-wider">Solar Wind Speed</span>
+                    <i data-lucide="zap" class="w-4 h-4 text-amber-400"></i>
+                </div>
+                <div class="my-2">
+                    <div class="flex items-baseline space-x-1">
+                        <span id="sw-speed" class="text-3xl font-bold font-mono text-white tracking-tight">---</span>
+                        <span class="text-xs text-slate-400 font-mono">km/s</span>
+                    </div>
+                </div>
+                <div class="w-full bg-slate-800/80 rounded-full h-1.5 overflow-hidden">
+                    <div id="sw-speed-bar" class="bg-amber-400 h-full rounded-full transition-all duration-500" style="width: 40%"></div>
+                </div>
+            </div>
+
+            <!-- CARD 4: IMF Bz (Magnetic Field) -->
+            <div class="glass-card glass-card-hover rounded-xl p-4 flex flex-col justify-between">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-mono text-slate-400 uppercase tracking-wider">IMF Bz Field</span>
+                    <i data-lucide="compass" class="w-4 h-4 text-cyan-400"></i>
+                </div>
+                <div class="my-2">
+                    <div class="flex items-baseline space-x-1">
+                        <span id="imf-bz" class="text-3xl font-bold font-mono text-white tracking-tight">---</span>
+                        <span class="text-xs text-slate-400 font-mono">nT</span>
+                    </div>
+                </div>
+                <div class="text-[11px] text-slate-500 font-mono flex justify-between">
+                    <span>Orientation: <span id="bz-orient" class="text-cyan-400">Neutral</span></span>
+                </div>
+            </div>
+
+            <!-- CARD 5: Proton Density -->
+            <div class="glass-card glass-card-hover rounded-xl p-4 flex flex-col justify-between">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-mono text-slate-400 uppercase tracking-wider">Proton Density</span>
+                    <i data-lucide="waves" class="w-4 h-4 text-purple-400"></i>
+                </div>
+                <div class="my-2">
+                    <div class="flex items-baseline space-x-1">
+                        <span id="sw-density" class="text-3xl font-bold font-mono text-white tracking-tight">---</span>
+                        <span class="text-xs text-slate-400 font-mono">p/cm³</span>
+                    </div>
+                </div>
+                <div class="text-[11px] text-slate-500 font-mono flex justify-between">
+                    <span>Plasma State: <span class="text-purple-400">Nominal</span></span>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- MAIN CHARTS GRID SECTION -->
+        <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- PRIMARY FORECAST CHART (2 Columns) -->
+            <div class="lg:col-span-2 glass-card rounded-xl p-5 flex flex-col justify-between relative">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-800/80 gap-2">
+                    <div>
+                        <h2 class="text-base font-semibold text-white flex items-center space-x-2">
+                            <span>Solar Proton Flux (PFU) Timeline</span>
+                            <span class="text-xs font-mono font-normal text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded">1-Hour Forecast</span>
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-0.5">Real-time XGBoost ML predictions vs telemetry ground truth</p>
+                    </div>
+                    <div class="flex items-center space-x-4 text-xs font-mono">
+                        <div class="flex items-center space-x-1.5">
+                            <span class="w-3 h-0.5 bg-blue-500 rounded"></span>
+                            <span class="text-slate-300">Predicted</span>
+                        </div>
+                        <div class="flex items-center space-x-1.5">
+                            <span class="w-3 h-0.5 bg-emerald-400 rounded"></span>
+                            <span class="text-slate-300">Ground Truth</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chart Canvas Container -->
+                <div class="relative w-full h-[360px] pt-4">
+                    <canvas id="primaryFluxChart"></canvas>
+                </div>
+            </div>
+
+            <!-- SECONDARY SOLAR WIND TELEMETRY CHART (1 Column) -->
+            <div class="glass-card rounded-xl p-5 flex flex-col justify-between">
+                <div class="flex items-center justify-between pb-4 border-b border-slate-800/80">
+                    <div>
+                        <h2 class="text-base font-semibold text-white">Solar Wind Dynamics</h2>
+                        <p class="text-xs text-slate-400 mt-0.5">Velocity ($km/s$) & IMF $B_z$ ($nT$)</p>
+                    </div>
+                    <i data-lucide="line-chart" class="w-4 h-4 text-slate-500"></i>
+                </div>
+
+                <div class="relative w-full h-[360px] pt-4">
+                    <canvas id="solarWindChart"></canvas>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- STREAM LOGS & EVENT FEED SECTION -->
+        <section class="glass-card rounded-xl p-5">
+            <div class="flex items-center justify-between pb-4 border-b border-slate-800/80">
+                <div class="flex items-center space-x-2">
+                    <i data-lucide="terminal" class="w-4 h-4 text-blue-400"></i>
+                    <h3 class="text-sm font-semibold text-white">Real-time Telemetry Stream Log</h3>
+                </div>
+                <span id="step-counter" class="text-xs font-mono text-slate-400">Step: 0 / 0</span>
+            </div>
+
+            <div class="mt-4 overflow-x-auto">
+                <table class="w-full text-left border-collapse font-mono text-xs">
+                    <thead>
+                        <tr class="text-slate-400 border-b border-slate-800/80 text-[11px] uppercase tracking-wider">
+                            <th class="pb-3 font-semibold">Timestamp (UTC)</th>
+                            <th class="pb-3 font-semibold">Predicted PFU</th>
+                            <th class="pb-3 font-semibold">Actual PFU</th>
+                            <th class="pb-3 font-semibold">NOAA Category</th>
+                            <th class="pb-3 font-semibold">Wind Speed</th>
+                            <th class="pb-3 font-semibold">IMF Bz</th>
+                            <th class="pb-3 font-semibold text-right">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="stream-log-body" class="divide-y divide-slate-800/40 text-slate-300">
+                        <tr>
+                            <td colspan="7" class="py-8 text-center text-slate-500 italic">
+                                Ready to stream telemetry. Click "Start" to ignite model feed.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="border-t border-slate-800/60 glass-card py-4 mt-auto text-xs text-slate-500 font-mono">
+        <div class="max-w-[1700px] mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2">
+            <div>
+                <span>SuryaKavach AI Telemetry Engine</span>
+                <span class="mx-2">•</span>
+                <span>Space Weather Prediction Core</span>
+            </div>
+            <div>
+                <span>XGBoost Model Status: <span class="text-emerald-400">ACTIVE</span></span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- JS DASHBOARD CONTROL SCRIPT -->
+    <script>
+        // Init Lucide Icons
+        lucide.createIcons();
+
+        // Clock Update
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('utc-time').textContent = now.toUTCString().split(' ')[4] + ' UTC';
+            document.getElementById('utc-date').textContent = now.toISOString().split('T')[0];
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // GLOBAL CHARTS & SSE STATE
+        let primaryChart, solarWindChart;
+        let eventSource = null;
+        let isStreaming = false;
+
+        // CHART SETUP
+        function initCharts() {
+            // Chart 1: Flux Forecast
+            const ctx1 = document.getElementById('primaryFluxChart').getContext('2d');
+            primaryChart = new Chart(ctx1, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Predicted PFU',
+                            data: [],
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.3,
+                            pointRadius: 0,
+                            pointHoverRadius: 4
+                        },
+                        {
+                            label: 'Actual PFU',
+                            data: [],
+                            borderColor: '#34d399',
+                            borderWidth: 1.5,
+                            borderDash: [4, 4],
+                            fill: false,
+                            tension: 0.3,
+                            pointRadius: 0
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { color: '#64748b', font: { family: 'JetBrains Mono', size: 10 }, maxTicksLimit: 8 }
+                        },
+                        y: {
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { color: '#64748b', font: { family: 'JetBrains Mono', size: 10 } }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+
+            // Chart 2: Solar Wind
+            const ctx2 = document.getElementById('solarWindChart').getContext('2d');
+            solarWindChart = new Chart(ctx2, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Wind Speed (km/s)',
+                            data: [],
+                            borderColor: '#fbbf24',
+                            borderWidth: 1.5,
+                            tension: 0.3,
+                            pointRadius: 0,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'IMF Bz (nT)',
+                            data: [],
+                            borderColor: '#22d3ee',
+                            borderWidth: 1.5,
+                            tension: 0.3,
+                            pointRadius: 0,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { color: '#64748b', font: { family: 'JetBrains Mono', size: 10 }, maxTicksLimit: 6 }
+                        },
+                        y: {
+                            type: 'linear',
+                            position: 'left',
+                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                            ticks: { color: '#fbbf24', font: { family: 'JetBrains Mono', size: 9 } }
+                        },
+                        y1: {
+                            type: 'linear',
+                            position: 'right',
+                            grid: { drawOnChartArea: false },
+                            ticks: { color: '#22d3ee', font: { family: 'JetBrains Mono', size: 9 } }
+                        }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        // LOAD STATIC PRELOADED DATA ON BOOT
+        async function loadPreloadedData() {
+            try {
+                const res = await fetch('/api/preloaded');
+                if (!res.ok) throw new Error("Failed to load preloaded data");
+                const data = await res.json();
+
+                // Format baseline labels
+                const labels = data.timestamps.map(ts => ts.split(' ')[1].substring(0, 5));
+
+                primaryChart.data.labels = labels;
+                primaryChart.data.datasets[1].data = data.actual_pfu; // Baseline actuals
+                primaryChart.update();
+
+                solarWindChart.data.labels = labels;
+                solarWindChart.data.datasets[0].data = data.sw_speed;
+                solarWindChart.data.datasets[1].data = data.imf_bz;
+                solarWindChart.update();
+
+                // Update cards with latest preloaded point
+                const lastIdx = data.timestamps.length - 1;
+                document.getElementById('sw-speed').textContent = Math.round(data.sw_speed[lastIdx]);
+                document.getElementById('imf-bz').textContent = data.imf_bz[lastIdx].toFixed(1);
+                document.getElementById('sw-density').textContent = data.sw_density[lastIdx].toFixed(1);
+            } catch (err) {
+                console.warn("Preloaded load notice:", err);
+            }
+        }
+
+        // SIMULATION CONTROLS
+        async function startSim() {
+            await fetch('/api/simulation/start', { method: 'POST' });
+            updateStatusUI(true);
+            if (!eventSource) connectStream();
+        }
+
+        async function stopSim() {
+            await fetch('/api/simulation/stop', { method: 'POST' });
+            updateStatusUI(false);
+        }
+
+        async function restartSim() {
+            await fetch('/api/simulation/restart', { method: 'POST' });
+            document.getElementById('stream-log-body').innerHTML = '';
+            primaryChart.data.labels = [];
+            primaryChart.data.datasets[0].data = [];
+            primaryChart.data.datasets[1].data = [];
+            primaryChart.update();
+            solarWindChart.data.labels = [];
+            solarWindChart.data.datasets[0].data = [];
+            solarWindChart.data.datasets[1].data = [];
+            solarWindChart.update();
+            loadPreloadedData();
+            updateStatusUI(false);
+        }
+
+        function updateStatusUI(running) {
+            isStreaming = running;
+            const ind = document.getElementById('status-indicator');
+            const txt = document.getElementById('status-text');
+            const pill = document.getElementById('status-pill');
+
+            if (running) {
+                ind.className = "w-2 h-2 rounded-full bg-emerald-400 animate-ping";
+                txt.textContent = "LIVE STREAMING";
+                txt.className = "text-emerald-400 font-medium";
+                pill.className = "flex items-center space-x-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-xs font-mono";
+            } else {
+                ind.className = "w-2 h-2 rounded-full bg-amber-500";
+                txt.textContent = "PAUSED";
+                txt.className = "text-amber-400 font-medium";
+                pill.className = "flex items-center space-x-2 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-xs font-mono";
+            }
+        }
+
+        // CONNECT SSE STREAM
+        function connectStream() {
+            eventSource = new EventSource('/api/simulation/stream');
+
+            eventSource.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.event === "END_OF_STREAM") {
+                    updateStatusUI(false);
+                    return;
+                }
+                processTelemetryTick(data);
+            };
+
+            eventSource.onerror = () => {
+                updateStatusUI(false);
+            };
+        }
+
+        // PROCESS REALTIME TICK
+        function processTelemetryTick(data) {
+            const timeLabel = data.timestamp.split(' ')[1].substring(0, 5);
+
+            // 1. Update Telemetry Cards
+            document.getElementById('pred-pfu').textContent = data.predictions.pred_pfu.toFixed(2);
+            document.getElementById('pred-log').textContent = data.predictions.pred_log.toFixed(4);
+            document.getElementById('actual-pfu').textContent = data.ground_truth.actual_pfu.toFixed(2);
+            document.getElementById('error-pfu').textContent = data.evaluation.abs_error_pfu.toFixed(2);
+
+            document.getElementById('sw-speed').textContent = Math.round(data.features.sw_speed);
+            document.getElementById('sw-speed-bar').style.width = `${Math.min(100, (data.features.sw_speed / 1000) * 100)}%`;
+
+            document.getElementById('imf-bz').textContent = data.features.imf_bz.toFixed(1);
+            document.getElementById('bz-orient').textContent = data.features.imf_bz < 0 ? "Southward (Risk)" : "Northward";
+            document.getElementById('bz-orient').className = data.features.imf_bz < 0 ? "text-rose-400 font-semibold" : "text-cyan-400";
+
+            document.getElementById('sw-density').textContent = data.features.sw_density.toFixed(1);
+            document.getElementById('step-counter').textContent = `Tick Step: ${data.step_id}`;
+
+            // 2. Dynamic NOAA Category Styling
+            const noaaCat = data.predictions.pred_category;
+            const noaaEl = document.getElementById('noaa-category');
+            const noaaCard = document.getElementById('noaa-card');
+            const noaaSub = document.getElementById('noaa-subtext');
+
+            noaaEl.textContent = noaaCat;
+            
+            if (noaaCat === "Quiet") {
+                noaaEl.className = "text-3xl font-extrabold font-mono text-emerald-400 tracking-tight";
+                noaaCard.className = "glass-card glass-card-hover rounded-xl p-4 flex flex-col justify-between border-l-4 border-l-emerald-500 glow-quiet";
+                noaaSub.textContent = "Nominal Conditions";
+            } else if (noaaCat === "S1") {
+                noaaEl.className = "text-3xl font-extrabold font-mono text-amber-400 tracking-tight";
+                noaaCard.className = "glass-card glass-card-hover rounded-xl p-4 flex flex-col justify-between border-l-4 border-l-amber-500 glow-s1";
+                noaaSub.textContent = "Minor Solar Storm";
+            } else if (noaaCat === "S2") {
+                noaaEl.className = "text-3xl font-extrabold font-mono text-orange-400 tracking-tight";
+                noaaCard.className = "glass-card glass-card-hover rounded-xl p-4 flex flex-col justify-between border-l-4 border-l-orange-500 glow-s2";
+                noaaSub.textContent = "Moderate Solar Storm";
+            } else {
+                noaaEl.className = "text-3xl font-extrabold font-mono text-rose-500 tracking-tight";
+                noaaCard.className = "glass-card glass-card-hover rounded-xl p-4 flex flex-col justify-between border-l-4 border-l-rose-600 glow-s3";
+                noaaSub.textContent = "SEVERE Solar Event";
+            }
+
+            // 3. Update Chart Buffers (Keep sliding window of 60 points)
+            pushChartData(primaryChart, timeLabel, [data.predictions.pred_pfu, data.ground_truth.actual_pfu], 60);
+            pushChartData(solarWindChart, timeLabel, [data.features.sw_speed, data.features.imf_bz], 60);
+
+            // 4. Append to Stream Log Table
+            appendLogEntry(data);
+        }
+
+        function pushChartData(chart, label, values, maxPoints) {
+            chart.data.labels.push(label);
+            chart.data.datasets.forEach((dataset, idx) => {
+                dataset.data.push(values[idx]);
+            });
+
+            if (chart.data.labels.length > maxPoints) {
+                chart.data.labels.shift();
+                chart.data.datasets.forEach(ds => ds.data.shift());
+            }
+            chart.update('none');
+        }
+
+        function appendLogEntry(data) {
+            const tbody = document.getElementById('stream-log-body');
+            
+            // Remove initial placeholder row
+            if (tbody.children[0] && tbody.children[0].cells.length === 1) {
+                tbody.innerHTML = '';
+            }
+
+            const tr = document.createElement('tr');
+            tr.className = "hover:bg-slate-800/30 transition-colors";
+
+            const catColor = data.predictions.pred_category === 'Quiet' ? 'text-emerald-400' : 'text-amber-400 font-bold';
+
+            tr.innerHTML = `
+                <td class="py-2.5 text-slate-300">${data.timestamp}</td>
+                <td class="py-2.5 font-semibold text-blue-400">${data.predictions.pred_pfu.toFixed(2)}</td>
+                <td class="py-2.5 text-slate-300">${data.ground_truth.actual_pfu.toFixed(2)}</td>
+                <td class="py-2.5 ${catColor}">${data.predictions.pred_category}</td>
+                <td class="py-2.5 text-slate-300">${Math.round(data.features.sw_speed)} km/s</td>
+                <td class="py-2.5 text-slate-300">${data.features.imf_bz.toFixed(1)} nT</td>
+                <td class="py-2.5 text-right">
+                    <span class="px-2 py-0.5 rounded text-[10px] ${data.evaluation.is_accurate ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}">
+                        ${data.evaluation.is_accurate ? 'MATCH' : 'DEV'}
+                    </span>
+                </td>
+            `;
+
+            tbody.insertBefore(tr, tbody.firstChild);
+
+            // Limit table rows to 15
+            if (tbody.children.length > 15) {
+                tbody.removeChild(tbody.lastChild);
+            }
+        }
+
+        // INIT
+        window.addEventListener('DOMContentLoaded', () => {
+            initCharts();
+            loadPreloadedData();
+        });
+    </script>
+</body>
+</html>
